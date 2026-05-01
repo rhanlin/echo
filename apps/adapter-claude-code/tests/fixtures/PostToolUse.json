@@ -1,0 +1,1 @@
+{"session_id": "sess-001", "transcript_path": "/tmp/sess-001.jsonl", "tool_name": "Bash", "tool_use_id": "tu-001", "tool_input": {"command": "ls -la"}, "tool_response": {"output": "total 24\ndrwxr-xr-x  4 user staff  128 Apr  1 12:00 ."}, "cwd": "/repo"}

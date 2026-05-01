@@ -1,0 +1,1 @@
+{"session_id": "sess-001", "transcript_path": "/tmp/sess-001.jsonl", "tool_name": "Bash", "tool_use_id": "tu-002", "tool_input": {"command": "cat /nonexistent"}, "error": "cat: /nonexistent: No such file or directory", "is_interrupt": false, "cwd": "/repo"}

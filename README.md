@@ -89,6 +89,12 @@ bun test          # run all tests
 bun dev           # start with --watch
 ```
 
+## Use it with Claude Code
+
+The echo adapter for Claude Code translates all 12 Claude Code hook events into v1 envelopes and ships them to this server. Wire it up once and every session in your project appears in the dashboard automatically.
+
+See [apps/adapter-claude-code/README.md](apps/adapter-claude-code/README.md) for install instructions and copy-pasteable `settings.json` examples.
+
 ## Cloud migration
 
 The two interfaces that need swapping for multi-replica cloud deployment:

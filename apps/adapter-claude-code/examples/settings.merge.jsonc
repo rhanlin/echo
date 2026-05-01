@@ -1,0 +1,69 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// echo Claude Code adapter — merge snippet
+//
+// Use this if you ALREADY have a .claude/settings.json with hook entries.
+// If you're starting fresh, use settings.full.json instead.
+//
+// Steps:
+//   1. Add the "env" block to the TOP LEVEL of your settings.json
+//      (replace REPLACE_ME with your project's identifier).
+//   2. For EACH hook type you want to observe, append the echo entry
+//      into that hook's array — alongside any existing hook entries.
+//      Change /ABSOLUTE/PATH/TO/echo to the real path where you cloned echo.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── STEP 1: Add to the top-level "env" block ─────────────────────────────────
+//
+//   "env": {
+//     "ECHO_SOURCE_APP": "REPLACE_ME",
+//     "ECHO_SERVER_URL": "http://localhost:4000"
+//   }
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── STEP 2: Append one entry per hook array ───────────────────────────────────
+//
+// Worked example for PreToolUse — your existing config might look like:
+//
+//   "PreToolUse": [
+//     {
+//       "matcher": "",
+//       "hooks": [
+//         { "type": "command", "command": "uv run .claude/hooks/my_checker.py" }
+//                                              ^^ your existing hook ^^
+//       ]
+//     }
+//   ]
+//
+// After appending the echo entry:
+//
+//   "PreToolUse": [
+//     {
+//       "matcher": "",
+//       "hooks": [
+//         { "type": "command", "command": "uv run .claude/hooks/my_checker.py" },
+//         {
+//           "type": "command",
+//           "command": "uv run /ABSOLUTE/PATH/TO/echo/apps/adapter-claude-code/send_event.py --event-type PreToolUse"
+//         }
+//       ]
+//     }
+//   ]
+//
+// Repeat the same append pattern for each of the 12 hook names below,
+// substituting the --event-type value as shown:
+//
+//   SessionStart       → --event-type SessionStart
+//   SessionEnd         → --event-type SessionEnd
+//   UserPromptSubmit   → --event-type UserPromptSubmit
+//   PreToolUse         → --event-type PreToolUse
+//   PostToolUse        → --event-type PostToolUse
+//   PostToolUseFailure → --event-type PostToolUseFailure
+//   Notification       → --event-type Notification
+//   Stop               → --event-type Stop
+//   PreCompact         → --event-type PreCompact
+//   SubagentStart      → --event-type SubagentStart
+//   SubagentStop       → --event-type SubagentStop
+//   PermissionRequest  → --event-type PermissionRequest
+//
+// ─────────────────────────────────────────────────────────────────────────────

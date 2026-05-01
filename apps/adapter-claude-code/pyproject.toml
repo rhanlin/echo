@@ -1,0 +1,16 @@
+[project]
+name = "echo-adapter-claude-code"
+version = "0.1.0"
+description = "Claude Code → echo EventEnvelope v1 adapter"
+requires-python = ">=3.10"
+
+[project.scripts]
+echo-cc-send = "send_event:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]

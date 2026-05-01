@@ -1,0 +1,12 @@
+{
+  "name": "@echo/envelope",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./schema": "./envelope.schema.json",
+    "./fixtures/valid": "./fixtures/valid-envelopes.json",
+    "./fixtures/invalid": "./fixtures/invalid-envelopes.json"
+  }
+}

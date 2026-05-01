@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://echo/envelope/v1.json",
+  "title": "EventEnvelope",
+  "type": "object",
+  "required": [
+    "envelope_version",
+    "agent_kind",
+    "agent_version",
+    "source_app",
+    "session_id",
+    "event_type",
+    "raw_event_type",
+    "payload"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "envelope_version": { "const": 1 },
+    "agent_kind":       { "type": "string", "minLength": 1 },
+    "agent_version":    { "type": "string", "minLength": 1 },
+    "source_app":       { "type": "string", "minLength": 1 },
+    "session_id":       { "type": "string", "minLength": 1 },
+    "timestamp":        { "type": "integer", "minimum": 0 },
+    "event_type":       { "type": "string", "minLength": 1 },
+    "raw_event_type":   { "type": "string", "minLength": 1 },
+    "payload":          { "type": "object" },
+    "normalized": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "tool_name":   { "type": "string" },
+        "tool_input":  { "type": "object" },
+        "tool_output": {},
+        "user_prompt": { "type": "string" },
+        "model_name":  { "type": "string" },
+        "cwd":         { "type": "string" },
+        "error": {
+          "type": "object",
+          "required": ["message"],
+          "properties": {
+            "message": { "type": "string" },
+            "code":    { "type": "string" }
+          }
+        }
+      }
+    },
+    "summary":    { "type": "string" },
+    "transcript": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["role", "content"],
+        "properties": {
+          "role":      { "enum": ["user", "assistant", "system", "tool"] },
+          "content":   {},
+          "timestamp": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "transcript_ref": {
+      "type": "object",
+      "required": ["kind", "location"],
+      "additionalProperties": false,
+      "properties": {
+        "kind":     { "enum": ["file", "url"] },
+        "location": { "type": "string", "minLength": 1 }
+      }
+    },
+    "human_in_the_loop": {
+      "type": "object",
+      "required": ["question", "type", "callback"],
+      "additionalProperties": false,
+      "properties": {
+        "question":          { "type": "string", "minLength": 1 },
+        "type":              { "enum": ["question", "permission", "choice"] },
+        "choices":           { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "requires_response": { "type": "boolean" },
+        "timeout":           { "type": "integer", "minimum": 0 },
+        "callback": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["kind", "url"],
+              "additionalProperties": false,
+              "properties": {
+                "kind": { "const": "websocket" },
+                "url":  { "type": "string", "minLength": 1 }
+              }
+            },
+            {
+              "type": "object",
+              "required": ["kind", "url"],
+              "additionalProperties": false,
+              "properties": {
+                "kind":   { "const": "webhook" },
+                "url":    { "type": "string", "minLength": 1 },
+                "method": { "enum": ["POST", "PUT"] }
+              }
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if":   { "properties": { "type": { "const": "choice" } } },
+          "then": { "required": ["choices"] }
+        }
+      ]
+    }
+  }
+}

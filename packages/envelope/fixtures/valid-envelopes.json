@@ -1,0 +1,106 @@
+[
+  {
+    "name": "minimal",
+    "envelope": {
+      "envelope_version": 1,
+      "agent_kind": "claude-code",
+      "agent_version": "1.0.0",
+      "source_app": "my-app",
+      "session_id": "sess-001",
+      "event_type": "tool.pre_use",
+      "raw_event_type": "PreToolUse",
+      "payload": { "tool": "Bash" }
+    }
+  },
+  {
+    "name": "with-timestamp-and-normalized",
+    "envelope": {
+      "envelope_version": 1,
+      "agent_kind": "claude-code",
+      "agent_version": "1.0.0",
+      "source_app": "my-app",
+      "session_id": "sess-001",
+      "timestamp": 1761958800000,
+      "event_type": "tool.pre_use",
+      "raw_event_type": "PreToolUse",
+      "payload": { "tool_name": "Bash", "tool_input": { "command": "ls" } },
+      "normalized": {
+        "tool_name": "Bash",
+        "tool_input": { "command": "ls" },
+        "cwd": "/tmp",
+        "model_name": "claude-sonnet-4-5"
+      },
+      "summary": "Listing files"
+    }
+  },
+  {
+    "name": "with-transcript",
+    "envelope": {
+      "envelope_version": 1,
+      "agent_kind": "claude-code",
+      "agent_version": "1.0.0",
+      "source_app": "my-app",
+      "session_id": "sess-001",
+      "event_type": "session.end",
+      "raw_event_type": "Stop",
+      "payload": { "stop_hook_active": false },
+      "transcript": [
+        { "role": "user", "content": "hello" },
+        { "role": "assistant", "content": "hi" }
+      ]
+    }
+  },
+  {
+    "name": "with-transcript-ref",
+    "envelope": {
+      "envelope_version": 1,
+      "agent_kind": "gemini-cli",
+      "agent_version": "0.0.1",
+      "source_app": "my-app",
+      "session_id": "g-1",
+      "event_type": "session.end",
+      "raw_event_type": "end_of_turn",
+      "payload": {},
+      "transcript_ref": { "kind": "file", "location": "/tmp/transcript.jsonl" }
+    }
+  },
+  {
+    "name": "hitl-permission-websocket",
+    "envelope": {
+      "envelope_version": 1,
+      "agent_kind": "cursor",
+      "agent_version": "0.1.0",
+      "source_app": "my-app",
+      "session_id": "c-1",
+      "event_type": "tool.pre_use",
+      "raw_event_type": "tool_call_intercept",
+      "payload": { "tool": "shell.run" },
+      "human_in_the_loop": {
+        "question": "Run rm -rf node_modules?",
+        "type": "permission",
+        "requires_response": true,
+        "timeout": 60,
+        "callback": { "kind": "websocket", "url": "ws://localhost:5555/cb" }
+      }
+    }
+  },
+  {
+    "name": "hitl-choice-webhook",
+    "envelope": {
+      "envelope_version": 1,
+      "agent_kind": "cursor",
+      "agent_version": "0.1.0",
+      "source_app": "my-app",
+      "session_id": "c-2",
+      "event_type": "agent.notification",
+      "raw_event_type": "ask_user",
+      "payload": {},
+      "human_in_the_loop": {
+        "question": "Which library?",
+        "type": "choice",
+        "choices": ["zod", "valibot", "yup"],
+        "callback": { "kind": "webhook", "url": "http://localhost:6000/cb", "method": "POST" }
+      }
+    }
+  }
+]

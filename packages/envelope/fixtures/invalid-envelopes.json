@@ -1,0 +1,160 @@
+[
+  {
+    "name": "missing-envelope_version",
+    "expectedFieldHint": "envelope_version",
+    "envelope": {
+      "agent_kind": "claude-code",
+      "agent_version": "1.0.0",
+      "source_app": "my-app",
+      "session_id": "sess-001",
+      "event_type": "tool.pre_use",
+      "raw_event_type": "PreToolUse",
+      "payload": {}
+    }
+  },
+  {
+    "name": "wrong-envelope_version",
+    "expectedFieldHint": "envelope_version",
+    "envelope": {
+      "envelope_version": 2,
+      "agent_kind": "claude-code",
+      "agent_version": "1.0.0",
+      "source_app": "my-app",
+      "session_id": "sess-001",
+      "event_type": "tool.pre_use",
+      "raw_event_type": "PreToolUse",
+      "payload": {}
+    }
+  },
+  {
+    "name": "missing-agent_kind",
+    "expectedFieldHint": "agent_kind",
+    "envelope": {
+      "envelope_version": 1,
+      "agent_version": "1.0.0",
+      "source_app": "my-app",
+      "session_id": "sess-001",
+      "event_type": "tool.pre_use",
+      "raw_event_type": "PreToolUse",
+      "payload": {}
+    }
+  },
+  {
+    "name": "empty-source_app",
+    "expectedFieldHint": "source_app",
+    "envelope": {
+      "envelope_version": 1,
+      "agent_kind": "claude-code",
+      "agent_version": "1.0.0",
+      "source_app": "",
+      "session_id": "sess-001",
+      "event_type": "tool.pre_use",
+      "raw_event_type": "PreToolUse",
+      "payload": {}
+    }
+  },
+  {
+    "name": "camelCase-fields",
+    "expectedFieldHint": "agent_kind",
+    "envelope": {
+      "envelope_version": 1,
+      "agentKind": "claude-code",
+      "agentVersion": "1.0.0",
+      "sourceApp": "my-app",
+      "sessionId": "sess-001",
+      "eventType": "tool.pre_use",
+      "rawEventType": "PreToolUse",
+      "payload": {}
+    }
+  },
+  {
+    "name": "payload-not-object",
+    "expectedFieldHint": "payload",
+    "envelope": {
+      "envelope_version": 1,
+      "agent_kind": "claude-code",
+      "agent_version": "1.0.0",
+      "source_app": "my-app",
+      "session_id": "sess-001",
+      "event_type": "tool.pre_use",
+      "raw_event_type": "PreToolUse",
+      "payload": "not-an-object"
+    }
+  },
+  {
+    "name": "hitl-callback-kind-none",
+    "expectedFieldHint": "callback",
+    "envelope": {
+      "envelope_version": 1,
+      "agent_kind": "claude-code",
+      "agent_version": "1.0.0",
+      "source_app": "my-app",
+      "session_id": "sess-001",
+      "event_type": "tool.pre_use",
+      "raw_event_type": "PreToolUse",
+      "payload": {},
+      "human_in_the_loop": {
+        "question": "?",
+        "type": "permission",
+        "callback": { "kind": "none" }
+      }
+    }
+  },
+  {
+    "name": "hitl-callback-missing-url",
+    "expectedFieldHint": "callback",
+    "envelope": {
+      "envelope_version": 1,
+      "agent_kind": "claude-code",
+      "agent_version": "1.0.0",
+      "source_app": "my-app",
+      "session_id": "sess-001",
+      "event_type": "tool.pre_use",
+      "raw_event_type": "PreToolUse",
+      "payload": {},
+      "human_in_the_loop": {
+        "question": "?",
+        "type": "permission",
+        "callback": { "kind": "websocket" }
+      }
+    }
+  },
+  {
+    "name": "hitl-choice-without-choices",
+    "expectedFieldHint": "choices",
+    "envelope": {
+      "envelope_version": 1,
+      "agent_kind": "claude-code",
+      "agent_version": "1.0.0",
+      "source_app": "my-app",
+      "session_id": "sess-001",
+      "event_type": "tool.pre_use",
+      "raw_event_type": "PreToolUse",
+      "payload": {},
+      "human_in_the_loop": {
+        "question": "Which?",
+        "type": "choice",
+        "callback": { "kind": "websocket", "url": "ws://x" }
+      }
+    }
+  },
+  {
+    "name": "hitl-invalid-type",
+    "expectedFieldHint": "type",
+    "envelope": {
+      "envelope_version": 1,
+      "agent_kind": "claude-code",
+      "agent_version": "1.0.0",
+      "source_app": "my-app",
+      "session_id": "sess-001",
+      "event_type": "tool.pre_use",
+      "raw_event_type": "PreToolUse",
+      "payload": {},
+      "human_in_the_loop": {
+        "question": "?",
+        "type": "yes_no",
+        "callback": { "kind": "websocket", "url": "ws://x" }
+      }
+    }
+  }
+]

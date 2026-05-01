@@ -8,3 +8,9 @@ dist/
 *.log
 .DS_Store
 bun.lockb
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/

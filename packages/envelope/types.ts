@@ -101,7 +101,8 @@ export interface HumanInTheLoop {
 
 export type HitlCallback =
   | { kind: 'websocket'; url: string }
-  | { kind: 'webhook'; url: string; method?: 'POST' | 'PUT' };
+  | { kind: 'webhook'; url: string; method?: 'POST' | 'PUT' }
+  | { kind: 'polling' };
 
 export interface HumanInTheLoopResponse {
   response?: string;

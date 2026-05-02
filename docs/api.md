@@ -95,6 +95,44 @@ Other recognized fields: `response` (free text), `choice` (string), `responded_a
 
 ---
 
+### `GET /events/:id/response`
+
+Long-poll endpoint for agents using `callback: { kind: "polling" }`. The agent calls this endpoint after posting an event and waits for a human to submit a response via `POST /events/:id/respond`.
+
+**Query parameters**
+
+| Param  | Type    | Default | Notes                                                  |
+|--------|---------|---------|--------------------------------------------------------|
+| `wait` | integer | `30`    | Max seconds to hold the connection. Clamped to `[0, 60]`. |
+
+**Behaviour**
+
+- If the event already has a recorded response (`status = "responded"`), returns **immediately** with the stored response body. Safe to re-poll.
+- If `wait = 0`, returns immediately with 408 when the response is still pending.
+- Otherwise holds the connection until either (a) a response is recorded or (b) `wait` seconds elapse.
+
+**Responses**
+
+- `200` — response body is the `HumanInTheLoopResponse` object that was submitted via `POST /events/:id/respond`.
+- `400` — event has no `human_in_the_loop` block.
+- `404` — event not found.
+- `408` — no response arrived within `wait` seconds.
+
+**Headers**: `Cache-Control: no-store` is always set to prevent intermediaries from caching the response or the empty hold.
+
+**Example**
+
+```bash
+# In a loop: poll until answered
+while true; do
+  result=$(curl -sf -m 35 'http://localhost:4000/events/42/response?wait=30')
+  if [ $? -eq 0 ]; then echo "$result"; break; fi
+  sleep 1
+done
+```
+
+---
+
 ## WebSocket: `/stream`
 
 Real-time push channel for the dashboard. Server-to-client only in v1; inbound messages are ignored.

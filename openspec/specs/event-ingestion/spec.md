@@ -1,4 +1,10 @@
-## ADDED Requirements
+# Event Ingestion Specification
+
+## Purpose
+TBD
+
+
+## Requirements
 
 ### Requirement: Event ingestion endpoint
 

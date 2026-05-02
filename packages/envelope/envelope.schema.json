@@ -96,6 +96,14 @@
                 "url":    { "type": "string", "minLength": 1 },
                 "method": { "enum": ["POST", "PUT"] }
               }
+            },
+            {
+              "type": "object",
+              "required": ["kind"],
+              "additionalProperties": true,
+              "properties": {
+                "kind": { "const": "polling" }
+              }
             }
           ]
         }

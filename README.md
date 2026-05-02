@@ -73,14 +73,40 @@ See [docs/adapter-guide.md](docs/adapter-guide.md) for the full authoring guide 
 
 See [docs/api.md](docs/api.md) for the full endpoint reference.
 
-| Method | Path                      | Description                          |
-|--------|---------------------------|--------------------------------------|
-| GET    | `/health`                 | Liveness probe                       |
-| POST   | `/events`                 | Ingest an envelope                   |
-| GET    | `/events/recent`          | Most recent events (oldest-first)    |
-| GET    | `/events/filter-options`  | Distinct filter values               |
-| POST   | `/events/:id/respond`     | Submit a human-in-the-loop response  |
-| WS     | `/stream`                 | Real-time event push                 |
+| Method | Path                           | Description                          |
+|--------|--------------------------------|--------------------------------------|
+| GET    | `/health`                      | Liveness probe                       |
+| POST   | `/events`                      | Ingest an envelope                   |
+| GET    | `/events/recent`               | Most recent events (oldest-first)    |
+| GET    | `/events/filter-options`       | Distinct filter values               |
+| POST   | `/events/:id/respond`          | Submit a human-in-the-loop response  |
+| GET    | `/events/:id/response?wait=30` | Long-poll for a HITL response (polling callback kind) |
+| WS     | `/stream`                      | Real-time event push                 |
+
+### Polling callback
+
+Use `callback: { kind: "polling" }` in your `human_in_the_loop` block when the agent cannot expose an inbound URL (e.g. behind NAT, inside CI, on a developer laptop with cloud-hosted echo). The agent polls for the human's answer instead of waiting for a server push.
+
+```bash
+# 1. Post an event with a polling callback
+curl -s -X POST http://localhost:4000/events \
+  -H 'Content-Type: application/json' \
+  -d '{"envelope_version":1,"agent_kind":"my-agent","agent_version":"0.1.0",
+       "source_app":"my-app","session_id":"s1","event_type":"tool.pre_use",
+       "raw_event_type":"PermissionRequest","payload":{},
+       "human_in_the_loop":{"question":"Run rm -rf?","type":"permission",
+                            "callback":{"kind":"polling"}}}' | jq .id
+
+# 2. Agent long-polls for the response (up to 30s)
+curl -m 35 'http://localhost:4000/events/<id>/response?wait=30'
+
+# 3. Human responds via dashboard or API
+curl -X POST http://localhost:4000/events/<id>/respond \
+  -H 'Content-Type: application/json' \
+  -d '{"permission":true,"responded_by":"alice"}'
+```
+
+`wait` defaults to `30` seconds, max `60`. Returns `200` with the response body once answered, or `408` on timeout.
 
 ## Development
 

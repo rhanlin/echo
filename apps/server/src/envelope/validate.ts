@@ -106,9 +106,10 @@ function validateHitl(value: unknown): string | null {
 function validateCallback(value: unknown): string | null {
   if (!isObject(value)) return 'human_in_the_loop.callback must be an object';
   const cb = value as Partial<HitlCallback> & Record<string, unknown>;
-  if (cb.kind !== 'websocket' && cb.kind !== 'webhook') {
-    return 'human_in_the_loop.callback.kind must be "websocket" or "webhook"';
+  if (cb.kind !== 'websocket' && cb.kind !== 'webhook' && cb.kind !== 'polling') {
+    return 'human_in_the_loop.callback.kind must be "websocket", "webhook", or "polling"';
   }
+  if (cb.kind === 'polling') return null;
   if (typeof cb.url !== 'string' || cb.url.length === 0) {
     return 'human_in_the_loop.callback.url must be a non-empty string';
   }

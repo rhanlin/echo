@@ -1,4 +1,10 @@
-## ADDED Requirements
+# Event Broadcast Specification
+
+## Purpose
+TBD
+
+
+## Requirements
 
 ### Requirement: Broadcaster interface
 

@@ -24,6 +24,7 @@ export async function deliverHitl(
   callback: HitlCallback,
   response: HumanInTheLoopResponse,
 ): Promise<DeliveryResult> {
+  if (callback.kind === 'polling') return { ok: true };
   if (callback.kind === 'webhook') return deliverWebhook(callback, response);
   return deliverWebsocket(callback, response);
 }

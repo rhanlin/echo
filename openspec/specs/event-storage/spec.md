@@ -1,4 +1,10 @@
-## ADDED Requirements
+# Event Storage Specification
+
+## Purpose
+TBD
+
+
+## Requirements
 
 ### Requirement: EventRepository interface
 

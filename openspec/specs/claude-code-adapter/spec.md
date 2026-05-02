@@ -1,4 +1,10 @@
-## ADDED Requirements
+# Claude Code Adapter Specification
+
+## Purpose
+TBD
+
+
+## Requirements
 
 ### Requirement: Single CLI entry point per hook
 

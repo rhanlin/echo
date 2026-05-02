@@ -102,5 +102,41 @@
         "callback": { "kind": "webhook", "url": "http://localhost:6000/cb", "method": "POST" }
       }
     }
+  },
+  {
+    "name": "hitl-permission-polling",
+    "envelope": {
+      "envelope_version": 1,
+      "agent_kind": "claude-code",
+      "agent_version": "0.1.0",
+      "source_app": "my-app",
+      "session_id": "p-1",
+      "event_type": "tool.pre_use",
+      "raw_event_type": "PermissionRequest",
+      "payload": { "tool": "Bash" },
+      "human_in_the_loop": {
+        "question": "Run rm -rf node_modules?",
+        "type": "permission",
+        "callback": { "kind": "polling" }
+      }
+    }
+  },
+  {
+    "name": "hitl-polling-with-extra-fields",
+    "envelope": {
+      "envelope_version": 1,
+      "agent_kind": "claude-code",
+      "agent_version": "0.1.0",
+      "source_app": "my-app",
+      "session_id": "p-2",
+      "event_type": "tool.pre_use",
+      "raw_event_type": "PermissionRequest",
+      "payload": {},
+      "human_in_the_loop": {
+        "question": "Allow?",
+        "type": "permission",
+        "callback": { "kind": "polling", "url": "ignored" }
+      }
+    }
   }
 ]

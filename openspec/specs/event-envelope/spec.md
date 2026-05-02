@@ -1,5 +1,8 @@
-## ADDED Requirements
+# Event Envelope Specification
 
+## Purpose
+TBD
+## Requirements
 ### Requirement: Envelope top-level shape
 
 The system SHALL define a single `EventEnvelope` v1 contract that every adapter MUST produce when posting events. The envelope SHALL use snake_case field names. The envelope MUST include the following required fields: `envelope_version`, `agent_kind`, `agent_version`, `source_app`, `session_id`, `event_type`, `raw_event_type`, and `payload`. All other fields SHALL be optional.
@@ -82,22 +85,27 @@ The envelope SHALL carry the agent's original payload under `payload` (untouched
 
 ### Requirement: Human-in-the-loop is an envelope property
 
-When an event requires a blocking human response, the envelope SHALL include `human_in_the_loop` with: `question` (string), `type` (`question | permission | choice`), an optional `choices` array (required when `type` is `choice`), an optional `timeout` (seconds), and `callback`. `callback.kind` SHALL be exactly one of `websocket` or `webhook`. Pure notifications that do not block the agent SHALL NOT use HITL — they SHALL use `event_type: "agent.notification"` instead.
+When an event requires a blocking human response, the envelope SHALL include `human_in_the_loop` with: `question` (string), `type` (`question | permission | choice`), an optional `choices` array (required when `type` is `choice`), an optional `timeout` (seconds), and `callback`. `callback.kind` SHALL be exactly one of `websocket`, `webhook`, or `polling`. Pure notifications that do not block the agent SHALL NOT use HITL — they SHALL use `event_type: "agent.notification"` instead.
 
-#### Scenario: Valid websocket callback
+The `callback` field SHALL be a discriminated union keyed by `kind`:
+- For `kind: "websocket"`, the callback SHALL include a `url` (`ws://` or `wss://`).
+- For `kind: "webhook"`, the callback SHALL include a `url` (`http://` or `https://`) and MAY include a `method` (default `"POST"`).
+- For `kind: "polling"`, only the `kind` field is required; no `url` or transport fields are needed because the agent retrieves the response by polling `GET /events/:id/response`.
 
-- **WHEN** an envelope contains `human_in_the_loop.callback` with `kind: "websocket"` and a valid `url`
-- **THEN** the server accepts the envelope and persists the HITL block
+#### Scenario: Polling kind accepted
 
-#### Scenario: Invalid callback kind
+- **WHEN** an envelope with `human_in_the_loop.callback: { "kind": "polling" }` is POSTed
+- **THEN** the envelope is accepted as structurally valid
 
-- **WHEN** an envelope contains `human_in_the_loop.callback.kind` set to anything other than `websocket` or `webhook` (including `none`)
-- **THEN** the server rejects the envelope with HTTP 400
+#### Scenario: Polling kind ignores extra fields
 
-#### Scenario: Choice type missing choices
+- **WHEN** an envelope with `human_in_the_loop.callback: { "kind": "polling", "url": "ignored" }` is POSTed
+- **THEN** the envelope is accepted; the extra `url` field is preserved verbatim in the persisted record but has no effect on response delivery
 
-- **WHEN** an envelope has `human_in_the_loop.type: "choice"` but no `choices` array
-- **THEN** the server rejects the envelope with HTTP 400
+#### Scenario: Unknown callback kind rejected
+
+- **WHEN** an envelope with `human_in_the_loop.callback: { "kind": "carrier-pigeon" }` is POSTed
+- **THEN** the server responds HTTP 400 naming the invalid `kind`
 
 ### Requirement: Published JSON Schema
 
@@ -112,3 +120,4 @@ The system SHALL publish a JSON Schema (draft 2020-12) describing the envelope a
 
 - **WHEN** the test runs an invalid example envelope through both validators
 - **THEN** both validators reject it with non-empty error output
+

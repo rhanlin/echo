@@ -24,6 +24,9 @@ export const CANONICAL_EVENT_TYPES = [
   'agent.stop',
   'agent.precompact',
 
+  // human-in-the-loop
+  'hitl.request',
+
   // sub-agent lifecycle
   'subagent.start',
   'subagent.stop',

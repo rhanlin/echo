@@ -47,6 +47,7 @@ export function startServer() {
 
   const server = Bun.serve<StreamContext, never>({
     port: built.config.port,
+    idleTimeout: 120, // seconds; must exceed long-poll max wait (60s)
     fetch(req, server) {
       const url = new URL(req.url);
       if (url.pathname === '/stream') {

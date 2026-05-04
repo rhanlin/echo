@@ -21,6 +21,7 @@ CANONICAL_EVENT_TYPES = {
     "agent.notification",
     "agent.stop",
     "agent.precompact",
+    "hitl.request",
     "subagent.start",
     "subagent.stop",
     "unknown",
@@ -60,9 +61,9 @@ def test_all_hooks_map_to_canonical():
     )
 
 
-def test_permission_request_folds_into_pre_use():
-    """PermissionRequest and PreToolUse must both map to tool.pre_use."""
-    assert HOOK_TO_EVENT_TYPE["PermissionRequest"] == "tool.pre_use"
+def test_permission_request_maps_to_hitl_request():
+    """PermissionRequest must map to hitl.request, not tool.pre_use."""
+    assert HOOK_TO_EVENT_TYPE["PermissionRequest"] == "hitl.request"
     assert HOOK_TO_EVENT_TYPE["PreToolUse"] == "tool.pre_use"
 
 

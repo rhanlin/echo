@@ -68,3 +68,61 @@ def test_full_pipeline_happy_path(capsys):
     assert envelope["payload"]["tool_name"] == "Bash"
     captured = capsys.readouterr()
     assert captured.err == ""
+
+
+def test_permission_request_denied_emits_permission_decision(capsys):
+    payload = {
+        "session_id": "s1",
+        "tool_name": "Write",
+        "tool_input": {"file_path": "/repo/out.txt"},
+        "cwd": "/repo",
+    }
+    with patch("sys.argv", ["send_event.py", "--event-type", "PermissionRequest",
+                             "--source-app", "test-app"]):
+        with patch("sys.stdin", _stdin(payload)):
+            with patch(
+                "send_event.handle_permission_request",
+                side_effect=lambda server_url, envelope, timeout: print('{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Denied by dashboard"}}}'),
+            ) as mock_handle:
+                _main()
+
+    mock_handle.assert_called_once()
+    captured = capsys.readouterr()
+    assert '"behavior":"deny"' in captured.out
+
+
+def test_permission_request_routes_to_blocking_handler():
+    payload = {
+        "session_id": "s1",
+        "tool_name": "Write",
+        "tool_input": {"file_path": "/repo/out.txt"},
+        "cwd": "/repo",
+    }
+    with patch("sys.argv", ["send_event.py", "--event-type", "PermissionRequest",
+                             "--source-app", "test-app"]):
+        with patch("sys.stdin", _stdin(payload)):
+            with patch("send_event.handle_permission_request") as mock_handle:
+                _main()
+
+    mock_handle.assert_called_once()
+
+
+def test_permission_request_allow_emits_permission_decision(capsys):
+    payload = {
+        "session_id": "s1",
+        "tool_name": "Write",
+        "tool_input": {"file_path": "/repo/out.txt"},
+        "cwd": "/repo",
+    }
+    with patch("sys.argv", ["send_event.py", "--event-type", "PermissionRequest",
+                             "--source-app", "test-app"]):
+        with patch("sys.stdin", _stdin(payload)):
+            with patch(
+                "send_event.handle_permission_request",
+                side_effect=lambda server_url, envelope, timeout: print('{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}'),
+            ) as mock_handle:
+                _main()
+
+    mock_handle.assert_called_once()
+    captured = capsys.readouterr()
+    assert '"behavior":"allow"' in captured.out

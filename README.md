@@ -92,7 +92,7 @@ Use `callback: { kind: "polling" }` in your `human_in_the_loop` block when the a
 curl -s -X POST http://localhost:4000/events \
   -H 'Content-Type: application/json' \
   -d '{"envelope_version":1,"agent_kind":"my-agent","agent_version":"0.1.0",
-       "source_app":"my-app","session_id":"s1","event_type":"tool.pre_use",
+  "source_app":"my-app","session_id":"s1","event_type":"hitl.request",
        "raw_event_type":"PermissionRequest","payload":{},
        "human_in_the_loop":{"question":"Run rm -rf?","type":"permission",
                             "callback":{"kind":"polling"}}}' | jq .id
@@ -117,7 +117,7 @@ bun dev           # start with --watch
 
 ## Use it with Claude Code
 
-The echo adapter for Claude Code translates all 12 Claude Code hook events into v1 envelopes and ships them to this server. Wire it up once and every session in your project appears in the dashboard automatically.
+The echo adapter for Claude Code translates all 12 Claude Code hook events into v1 envelopes and ships them to this server. `PermissionRequest` is emitted as a real `hitl.request` and waits on the polling callback, so Allow/Deny actions in sonar can control Claude Code's blocked permission prompts.
 
 See [apps/adapter-claude-code/README.md](apps/adapter-claude-code/README.md) for install instructions and copy-pasteable `settings.json` examples.
 

@@ -35,6 +35,7 @@ from mappings import HOOK_TO_EVENT_TYPE
 AGENT_KIND = "claude-code"
 AGENT_VERSION = "0.1.0"
 DEFAULT_SERVER_URL = "http://localhost:4000"
+DEFAULT_HITL_TIMEOUT = 300
 
 
 # ---------------------------------------------------------------------------
@@ -57,6 +58,18 @@ def resolve_config(
     )
     source_app = getattr(args, "source_app", None) or env.get("ECHO_SOURCE_APP")
     return server_url, source_app
+
+
+def resolve_hitl_timeout(env: dict[str, str]) -> int:
+    """Return HITL timeout seconds from env, falling back on invalid values."""
+    raw = env.get("ECHO_HITL_TIMEOUT")
+    if raw is None:
+        return DEFAULT_HITL_TIMEOUT
+    try:
+        timeout = int(raw)
+    except ValueError:
+        return DEFAULT_HITL_TIMEOUT
+    return timeout if timeout > 0 else DEFAULT_HITL_TIMEOUT
 
 
 # ---------------------------------------------------------------------------
@@ -137,6 +150,45 @@ def extract_normalized(payload: dict[str, Any]) -> dict[str, Any] | None:
     return result if result else None
 
 
+def build_permission_question(payload: dict[str, Any]) -> str:
+    """Build a human-readable HITL question for Claude Code permission prompts."""
+    tool_name = payload.get("tool_name")
+    tool_input = payload.get("tool_input")
+
+    if not isinstance(tool_name, str) or not tool_name:
+        return "Allow Claude Code to continue?"
+
+    if isinstance(tool_input, dict):
+        command = tool_input.get("command")
+        if isinstance(command, str) and command:
+            return f"Allow Claude Code to run {tool_name}: {command}?"
+
+        file_path = tool_input.get("file_path")
+        if isinstance(file_path, str) and file_path:
+            return f"Allow Claude Code to use {tool_name} on {file_path}?"
+
+        path = tool_input.get("path")
+        if isinstance(path, str) and path:
+            return f"Allow Claude Code to use {tool_name} on {path}?"
+
+    return f"Allow Claude Code to use {tool_name}?"
+
+
+def extract_human_in_the_loop(
+    payload: dict[str, Any],
+    event_type_arg: str,
+) -> dict[str, Any] | None:
+    """Build the HITL block for blocking Claude Code hook events."""
+    if event_type_arg != "PermissionRequest":
+        return None
+
+    return {
+        "question": build_permission_question(payload),
+        "type": "permission",
+        "callback": {"kind": "polling"},
+    }
+
+
 # ---------------------------------------------------------------------------
 # Envelope assembly
 # ---------------------------------------------------------------------------
@@ -165,6 +217,10 @@ def build_envelope(
     normalized = extract_normalized(stdin_payload)
     if normalized is not None:
         envelope["normalized"] = normalized
+
+    human_in_the_loop = extract_human_in_the_loop(stdin_payload, event_type_arg)
+    if human_in_the_loop is not None:
+        envelope["human_in_the_loop"] = human_in_the_loop
 
     return envelope
 
@@ -209,6 +265,160 @@ def post_envelope(server_url: str, envelope: dict[str, Any]) -> bool:
     except Exception as exc:  # noqa: BLE001
         print(f"echo-adapter: POST {endpoint} unexpected error: {exc}", file=sys.stderr)
         return False
+
+
+def create_event(server_url: str, envelope: dict[str, Any]) -> dict[str, Any] | None:
+    """POST envelope and return the created StoredEvent on success."""
+    endpoint = server_url.rstrip("/") + "/events"
+    try:
+        data = json.dumps(envelope).encode("utf-8")
+        req = urllib.request.Request(
+            endpoint,
+            data=data,
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": f"echo-adapter-claude-code/{AGENT_VERSION}",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            if not 200 <= resp.status < 300:
+                print(
+                    f"echo-adapter: POST {endpoint} returned {resp.status}",
+                    file=sys.stderr,
+                )
+                return None
+            try:
+                body = json.loads(resp.read().decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                print(
+                    f"echo-adapter: POST {endpoint} returned non-JSON success body",
+                    file=sys.stderr,
+                )
+                return None
+            if not isinstance(body, dict):
+                print(
+                    f"echo-adapter: POST {endpoint} returned unexpected body type",
+                    file=sys.stderr,
+                )
+                return None
+            return body
+    except urllib.error.HTTPError as exc:
+        print(
+            f"echo-adapter: POST {endpoint} HTTP error {exc.code}: {exc.reason}",
+            file=sys.stderr,
+        )
+        return None
+    except urllib.error.URLError as exc:
+        print(f"echo-adapter: POST {endpoint} failed: {exc.reason}", file=sys.stderr)
+        return None
+    except Exception as exc:  # noqa: BLE001
+        print(f"echo-adapter: POST {endpoint} unexpected error: {exc}", file=sys.stderr)
+        return None
+
+
+def _get_json(url: str, timeout: int) -> tuple[int, dict[str, Any] | None]:
+    """GET JSON and return (status, parsed dict or None)."""
+    try:
+        req = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            try:
+                body = json.loads(resp.read().decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                body = None
+            return resp.status, body if isinstance(body, dict) else None
+    except urllib.error.HTTPError as exc:
+        return exc.code, None
+    except Exception:
+        return 0, None
+
+
+def wait_for_hitl_response(
+    event_id: int,
+    server_url: str,
+    timeout: int,
+) -> tuple[str, dict[str, Any] | None]:
+    """Long-poll until the HITL response arrives, times out, or errors."""
+    deadline = time.monotonic() + timeout
+    base = server_url.rstrip("/")
+
+    while time.monotonic() < deadline:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        wait = min(30, max(1, int(remaining)))
+        status, body = _get_json(
+            f"{base}/events/{event_id}/response?wait={wait}",
+            timeout=wait + 5,
+        )
+        if status == 200:
+            return "responded", body
+        if status == 408:
+            continue
+        if status == 0:
+            return "error", None
+        return "error", None
+
+    return "timeout", None
+
+
+def emit_permission_deny(reason: str) -> None:
+    """Emit a Claude Code deny decision for PermissionRequest hooks."""
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PermissionRequest",
+            "decision": {
+                "behavior": "deny",
+                "message": reason,
+            },
+        }
+    }))
+
+
+def emit_permission_allow() -> None:
+    """Emit a Claude Code allow decision for PermissionRequest hooks."""
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PermissionRequest",
+            "decision": {
+                "behavior": "allow",
+            },
+        }
+    }))
+
+
+def handle_permission_request(
+    server_url: str,
+    envelope: dict[str, Any],
+    timeout: int,
+) -> None:
+    """Send a blocking PermissionRequest HITL event and emit deny on non-approval."""
+    created = create_event(server_url, envelope)
+    if created is None:
+        emit_permission_deny("echo-adapter: failed to create HITL request")
+        return
+
+    event_id = created.get("id")
+    if not isinstance(event_id, int):
+        emit_permission_deny("echo-adapter: HITL request missing event id")
+        return
+
+    status, body = wait_for_hitl_response(event_id, server_url, timeout)
+    if status == "responded":
+        permission = body.get("permission") if isinstance(body, dict) else None
+        if permission is True:
+            emit_permission_allow()
+            return
+        if permission is False:
+            emit_permission_deny("Denied by dashboard")
+            return
+        emit_permission_deny("echo-adapter: invalid HITL response payload")
+        return
+
+    if status == "timeout":
+        emit_permission_deny("echo-adapter: timeout waiting for dashboard")
+        return
+
+    emit_permission_deny("echo-adapter: failed to read dashboard response")
 
 
 # ---------------------------------------------------------------------------
@@ -280,6 +490,14 @@ def _main() -> None:
 
     # Build + send
     envelope = build_envelope(stdin_payload, args.event_type, source_app)
+    if args.event_type == "PermissionRequest":
+        handle_permission_request(
+            server_url,
+            envelope,
+            resolve_hitl_timeout(dict(os.environ)),
+        )
+        return
+
     post_envelope(server_url, envelope)
 
 

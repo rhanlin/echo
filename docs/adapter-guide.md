@@ -79,6 +79,7 @@ Callback options:
 
 - `{ kind: "websocket", url }` — server connects, sends one JSON frame, closes. 5s timeout.
 - `{ kind: "webhook", url, method? }` — server makes one HTTP request (default POST). Non-2xx is treated as failure. 5s timeout.
+- `{ kind: "polling" }` — producer long-polls `GET /events/:id/response` until a human responds or the timeout elapses.
 
 Set `type: "choice"` and supply `choices: string[]` when offering a fixed list. Use `type: "permission"` for boolean approval, `type: "question"` for free-text answers.
 

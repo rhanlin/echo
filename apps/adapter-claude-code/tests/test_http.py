@@ -1,4 +1,4 @@
-"""Tests for post_envelope() — fire-and-forget HTTP delivery."""
+"""Tests for adapter HTTP helpers."""
 from __future__ import annotations
 
 import io
@@ -14,7 +14,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from send_event import post_envelope
+from send_event import create_event, post_envelope, wait_for_hitl_response
 
 ENVELOPE = {
     "envelope_version": 1,
@@ -106,3 +106,29 @@ def test_unexpected_exception_returns_false(capsys):
     assert result is False
     captured = capsys.readouterr()
     assert "echo-adapter" in captured.err
+
+
+def test_create_event_returns_parsed_stored_event():
+    resp = _mock_response(201)
+    resp.read.return_value = b'{"id":42,"event_type":"hitl.request"}'
+    with patch("urllib.request.urlopen", return_value=resp):
+        result = create_event("http://localhost:4000", ENVELOPE)
+    assert result == {"id": 42, "event_type": "hitl.request"}
+
+
+def test_wait_for_hitl_response_retries_408_then_returns_body():
+    with patch(
+        "send_event._get_json",
+        side_effect=[(408, None), (408, None), (200, {"permission": True})],
+    ):
+        status, body = wait_for_hitl_response(42, "http://localhost:4000", 5)
+    assert status == "responded"
+    assert body == {"permission": True}
+
+
+def test_wait_for_hitl_response_timeout():
+    with patch("send_event._get_json", side_effect=[(408, None), (408, None), (408, None)]):
+        with patch("time.monotonic", side_effect=[0.0, 0.1, 1.1, 1.2, 2.2, 2.3, 3.3, 3.4]):
+            status, body = wait_for_hitl_response(42, "http://localhost:4000", 3)
+    assert status == "timeout"
+    assert body is None

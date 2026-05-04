@@ -4,7 +4,7 @@ Translates [Claude Code](https://claude.ai/code) hook events into [echo](../../R
 
 Every Claude Code lifecycle event — session start/end, tool calls, user prompts, notifications, sub-agents — appears in the echo dashboard in real time.
 
-**Fire-and-forget**: the adapter always exits 0 and never blocks your Claude Code session. A failed POST is logged to stderr and silently skipped.
+**Delivery mode**: most hooks are fire-and-forget and always exit 0. `PermissionRequest` is the exception: the adapter posts a HITL event, long-polls for the human decision, and only emits Claude Code `permissionDecision` JSON when the dashboard denies, times out, or errors.
 
 ---
 
@@ -55,6 +55,8 @@ Open `examples/settings.merge.jsonc` in this directory. It contains annotated in
 | 2 | `ECHO_SOURCE_APP` env var | `ECHO_SERVER_URL` env var |
 | 3 | *(no default — adapter exits with warning)* | `http://localhost:4000` |
 
+`PermissionRequest` also reads `ECHO_HITL_TIMEOUT` (seconds, default `300`) to bound how long Claude Code waits for a dashboard decision.
+
 If `source_app` cannot be resolved the adapter writes a warning to stderr and exits 0 without making any HTTP request.
 
 ---
@@ -74,9 +76,11 @@ If `source_app` cannot be resolved the adapter writes a warning to stderr and ex
 | `PreCompact` | `agent.precompact` | |
 | `SubagentStart` | `subagent.start` | |
 | `SubagentStop` | `subagent.stop` | |
-| `PermissionRequest` | `tool.pre_use` | `raw_event_type` distinguishes from PreToolUse |
+| `PermissionRequest` | `hitl.request` | emits `human_in_the_loop` with `type: "permission"` and `callback: { kind: "polling" }` |
 
 The original Claude Code hook name is always preserved in `raw_event_type` so dashboards can filter on it.
+
+`PermissionRequest` is treated as a blocking decision rather than a normal tool lifecycle event. The adapter emits a true HITL envelope so dashboards like sonar can drive their phone/approval UI from the canonical `hitl.request` path, then long-polls `GET /events/:id/response` and turns the reply back into Claude Code's documented `hookSpecificOutput.decision.behavior` allow/deny schema.
 
 ---
 
@@ -97,6 +101,24 @@ For consumers that prefer not to dig into vendor-specific `payload` keys, the ad
 
 The full original payload is still preserved verbatim under `payload` — `normalized` is purely for convenience.
 
+For `PermissionRequest`, the adapter also adds:
+
+```json
+{
+   "human_in_the_loop": {
+      "question": "Allow Claude Code to use Write on /repo/src/App.tsx?",
+      "type": "permission",
+      "callback": { "kind": "polling" }
+   }
+}
+```
+
+When a human responds in sonar:
+
+- `{"permission": true}` → the hook prints `{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}` and Claude Code proceeds.
+- `{"permission": false}` → the hook prints `{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Denied by dashboard"}}}`.
+- timeout / network / malformed response → the hook denies by default.
+
 ---
 
 ## Troubleshooting
@@ -115,7 +137,11 @@ The adapter couldn't resolve `source_app`. Either:
 
 **"echo-adapter: POST … failed"**
 
-The echo server isn't reachable. The adapter exits 0 so Claude Code is unaffected. Start the echo server (`bun start` from the echo repo root) and the next hook will succeed.
+The echo server isn't reachable. Non-blocking hooks are skipped; `PermissionRequest` denies by default because Claude Code is already waiting on a safety-sensitive approval.
+
+**`PermissionRequest` hangs too long**
+
+Set `ECHO_HITL_TIMEOUT` in your Claude Code `env` block to shorten how long the adapter waits for sonar before denying by default.
 
 ---
 
@@ -126,4 +152,4 @@ cd apps/adapter-claude-code
 uv run pytest
 ```
 
-All 43 tests should pass. Tests cover: mapping table, config resolution, envelope assembly, HTTP delivery, and CLI entry point.
+All tests should pass. Tests cover: mapping table, config resolution, envelope assembly, HTTP delivery, and CLI entry point.

@@ -12,7 +12,13 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from send_event import AGENT_KIND, AGENT_VERSION, build_envelope, extract_normalized
+from send_event import (
+    AGENT_KIND,
+    AGENT_VERSION,
+    build_envelope,
+    build_permission_question,
+    extract_normalized,
+)
 
 REQUIRED_FIELDS = {
     "envelope_version",
@@ -74,11 +80,38 @@ def test_raw_event_type_preserved():
     assert env["raw_event_type"] == "PermissionRequest"
 
 
-def test_permission_request_maps_to_tool_pre_use():
-    """PermissionRequest envelope must have event_type=tool.pre_use."""
+def test_permission_request_maps_to_hitl_request():
+    """PermissionRequest envelope must have event_type=hitl.request."""
     payload = load_fixture("PermissionRequest")
     env = build_envelope(payload, "PermissionRequest", "test-app")
-    assert env["event_type"] == "tool.pre_use"
+    assert env["event_type"] == "hitl.request"
+
+
+def test_permission_request_adds_human_in_the_loop_block():
+    payload = load_fixture("PermissionRequest")
+    env = build_envelope(payload, "PermissionRequest", "test-app")
+    assert env["human_in_the_loop"] == {
+        "question": "Allow Claude Code to run Bash: rm -rf /tmp/old?",
+        "type": "permission",
+        "callback": {"kind": "polling"},
+    }
+
+
+def test_pre_tool_use_does_not_add_human_in_the_loop():
+    payload = load_fixture("PreToolUse")
+    env = build_envelope(payload, "PreToolUse", "test-app")
+    assert "human_in_the_loop" not in env
+
+
+def test_build_permission_question_prefers_file_path_when_present():
+    payload = {
+        "tool_name": "Write",
+        "tool_input": {"file_path": "/repo/src/App.tsx"},
+    }
+    assert (
+        build_permission_question(payload)
+        == "Allow Claude Code to use Write on /repo/src/App.tsx?"
+    )
 
 
 def test_normalized_omitted_when_empty():

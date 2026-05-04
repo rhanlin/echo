@@ -148,3 +148,82 @@ def test_extract_normalized_missing_file():
     payload = {"transcript_path": "/nonexistent/path.jsonl"}
     result = extract_normalized(payload)
     assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Enriched normalized fields (enrich-claude-code-normalized)
+# ---------------------------------------------------------------------------
+
+def test_normalized_user_prompt_from_user_prompt_submit():
+    payload = load_fixture("UserPromptSubmit")
+    env = build_envelope(payload, "UserPromptSubmit", "test-app")
+    assert env["normalized"]["user_prompt"] == "What files are in this repo?"
+
+
+def test_normalized_tool_input_on_pre_tool_use():
+    payload = load_fixture("PreToolUse")
+    env = build_envelope(payload, "PreToolUse", "test-app")
+    assert env["normalized"]["tool_input"] == {"command": "ls -la"}
+
+
+def test_normalized_tool_output_on_post_tool_use():
+    payload = load_fixture("PostToolUse")
+    env = build_envelope(payload, "PostToolUse", "test-app")
+    assert env["normalized"]["tool_output"] == payload["tool_response"]
+
+
+def test_normalized_error_on_post_tool_use_failure():
+    payload = load_fixture("PostToolUseFailure")
+    env = build_envelope(payload, "PostToolUseFailure", "test-app")
+    assert env["normalized"]["error"] == {
+        "message": "cat: /nonexistent: No such file or directory"
+    }
+    assert "code" not in env["normalized"]["error"]
+
+
+def test_normalized_notification_message():
+    payload = load_fixture("Notification")
+    env = build_envelope(payload, "Notification", "test-app")
+    assert env["normalized"]["notification_message"] == "Claude needs your attention."
+
+
+def test_extract_normalized_omits_field_on_type_mismatch():
+    """A type mismatch on one source field omits only that field."""
+    payload = {
+        "tool_name": "Bash",
+        "tool_input": "not-a-dict",  # mismatch
+        "cwd": "/repo",
+    }
+    result = extract_normalized(payload)
+    assert result is not None
+    assert result["tool_name"] == "Bash"
+    assert result["cwd"] == "/repo"
+    assert "tool_input" not in result
+
+
+def test_extract_normalized_does_not_mutate_payload():
+    """The original stdin payload dict must remain deep-equal after extraction."""
+    payload = load_fixture("PreToolUse")
+    snapshot = json.loads(json.dumps(payload))
+    extract_normalized(payload)
+    assert payload == snapshot
+
+
+def test_extract_normalized_returns_none_when_nothing_extractable():
+    """Regression on the empty-block omission rule."""
+    payload = {"some_unknown_key": 1, "another": "x"}
+    assert extract_normalized(payload) is None
+
+
+def test_normalized_error_omitted_when_not_string():
+    """error wrapping must skip non-string values."""
+    payload = {"tool_name": "Bash", "error": {"already": "object"}}
+    result = extract_normalized(payload)
+    assert result is not None
+    assert "error" not in result
+
+
+def test_normalized_omits_empty_strings():
+    """Empty strings should not produce normalized fields."""
+    payload = {"tool_name": "", "cwd": "", "prompt": "", "message": ""}
+    assert extract_normalized(payload) is None

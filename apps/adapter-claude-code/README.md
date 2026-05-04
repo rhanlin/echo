@@ -80,6 +80,25 @@ The original Claude Code hook name is always preserved in `raw_event_type` so da
 
 ---
 
+## Normalized fields
+
+For consumers that prefer not to dig into vendor-specific `payload` keys, the adapter populates a `normalized` block on each envelope. Every field is independently optional — when the source key is absent or has the wrong type, that single field is omitted (the rest of the block is unaffected).
+
+| `normalized.<field>` | Source key in `payload` | Hooks that emit it |
+|---|---|---|
+| `tool_name` | `tool_name` | PreToolUse, PostToolUse, PostToolUseFailure, PermissionRequest |
+| `tool_input` | `tool_input` (object, copied as-is) | PreToolUse, PostToolUse, PostToolUseFailure, PermissionRequest |
+| `tool_output` | `tool_response` (any JSON) | PostToolUse |
+| `error` | `error` (wrapped as `{ message: <string> }`) | PostToolUseFailure |
+| `user_prompt` | `prompt` | UserPromptSubmit |
+| `notification_message` | `message` | Notification |
+| `cwd` | `cwd` | most hooks |
+| `model_name` | extracted from `transcript_path` (≤100ms read budget) | any hook with a transcript |
+
+The full original payload is still preserved verbatim under `payload` — `normalized` is purely for convenience.
+
+---
+
 ## Troubleshooting
 
 **Events not appearing in dashboard**
@@ -107,4 +126,4 @@ cd apps/adapter-claude-code
 uv run pytest
 ```
 
-All 33 tests should pass. Tests cover: mapping table, config resolution, envelope assembly, HTTP delivery, and CLI entry point.
+All 43 tests should pass. Tests cover: mapping table, config resolution, envelope assembly, HTTP delivery, and CLI entry point.

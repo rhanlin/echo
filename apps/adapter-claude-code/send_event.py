@@ -92,13 +92,41 @@ def extract_model_name(transcript_path: str) -> str:
 
 
 def extract_normalized(payload: dict[str, Any]) -> dict[str, Any] | None:
-    """Return a normalized convenience block, or None if nothing to extract."""
+    """Return a normalized convenience block, or None if nothing to extract.
+
+    Each extraction is independently guarded: a type mismatch on one source
+    field omits that single normalized field but never affects others and
+    never raises. The original ``payload`` object is not mutated; nested
+    objects are copied as references (envelope assembly does not mutate).
+    """
     result: dict[str, Any] = {}
 
-    if payload.get("tool_name"):
-        result["tool_name"] = payload["tool_name"]
-    if payload.get("cwd"):
-        result["cwd"] = payload["cwd"]
+    tool_name = payload.get("tool_name")
+    if isinstance(tool_name, str) and tool_name:
+        result["tool_name"] = tool_name
+
+    cwd = payload.get("cwd")
+    if isinstance(cwd, str) and cwd:
+        result["cwd"] = cwd
+
+    prompt = payload.get("prompt")
+    if isinstance(prompt, str) and prompt:
+        result["user_prompt"] = prompt
+
+    tool_input = payload.get("tool_input")
+    if isinstance(tool_input, dict):
+        result["tool_input"] = tool_input
+
+    if "tool_response" in payload:
+        result["tool_output"] = payload["tool_response"]
+
+    error_value = payload.get("error")
+    if isinstance(error_value, str) and error_value:
+        result["error"] = {"message": error_value}
+
+    message = payload.get("message")
+    if isinstance(message, str) and message:
+        result["notification_message"] = message
 
     transcript_path = payload.get("transcript_path", "")
     if transcript_path and os.path.isfile(transcript_path):

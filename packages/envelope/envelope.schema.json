@@ -32,6 +32,7 @@
         "tool_input":  { "type": "object" },
         "tool_output": {},
         "user_prompt": { "type": "string" },
+        "notification_message": { "type": "string" },
         "model_name":  { "type": "string" },
         "cwd":         { "type": "string" },
         "error": {

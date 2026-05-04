@@ -66,6 +66,8 @@ export interface NormalizedFields {
   tool_input?: Record<string, unknown>;
   tool_output?: unknown;
   user_prompt?: string;
+  /** Human-facing heads-up emitted by the agent (non-blocking). For blocking interactions use `human_in_the_loop` instead. */
+  notification_message?: string;
   model_name?: string;
   cwd?: string;
   error?: { message: string; code?: string };
